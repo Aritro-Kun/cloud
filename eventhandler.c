@@ -1,5 +1,3 @@
-//acc to windows dows, we create a handle, if we try to access any i/o device in windows and we can createfilea api for that.
-
 #include <windows.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -20,32 +18,37 @@ VOID CALLBACK CompletionRoutine(
     LPOVERLAPPED lpOverLapped
 ){
     if (dwErrorCode == ERROR_SUCCESS){
-        printf("Change detected. Number of bytes transferred: %lu", dwNumberOfBytesTransferred);
+        //printf("Change detected. Number of bytes transferred: %lu.\n", dwNumberOfBytesTransferred);
         buffer* notify = (buffer*)file_notify_information;
         while(notify){
             char fileName[MAX_PATH];
             wcstombs(fileName, notify->FileName, notify->FileNameLength / sizeof(WCHAR));
             fileName[notify->FileNameLength / sizeof(WCHAR)] = '\0';
-            printf("[CHANGE] File: %s, Action: %lu", fileName, notify->Action);
+            //printf("[CHANGE] File: %s, Action: %lu.\n", fileName, notify->Action);
             DWORD action = notify->Action;
             char oldname[MAX_PATH];
             char newname[MAX_PATH];
             switch (action){
                 case FILE_ACTION_ADDED:
-                    printf("\nFile %s was added to the directory.", fileName);
+                    printf("File %s was added to the directory.\n", fileName);
+                    fflush(stdout);
                     break;
                 case FILE_ACTION_REMOVED:
-                    printf("\nFile %s was removed from the directory.", fileName);
+                    //edge case, if you rename to an uppercase name, then we need to solve that first, since we get in return first "This file was removed, then we get This file was renamed to this."
+                    printf("File %s was removed from the directory.\n", fileName);
+                    fflush(stdout);
                     break;
                 case FILE_ACTION_MODIFIED:
-                    printf("\nFile %s was modified", fileName);
+                    printf("File %s was modified.\n", fileName);
+                    fflush(stdout);
                     break;
                 case FILE_ACTION_RENAMED_OLD_NAME:
                     wcstombs(oldname, notify->FileName, notify->FileNameLength/sizeof(WCHAR));
                     oldname[notify->FileNameLength/sizeof(WCHAR)] = '\0';
                     break;
                 case FILE_ACTION_RENAMED_NEW_NAME:
-                    printf("\nFile %s has been renamed to %s", oldname, fileName);
+                    printf("File %s has been renamed to %s.\n", oldname, fileName);
+                    fflush(stdout);
                     break;
             }
             if (notify->NextEntryOffset == 0){
@@ -55,7 +58,7 @@ VOID CALLBACK CompletionRoutine(
         }
     }
     else{
-        printf("\nCompletion/Input Output operation encountered an error: %lu", GetLastError());
+        printf("Completion/Input Output operation encountered an error: %lu.\n", GetLastError());
     }
 }
 
@@ -72,10 +75,9 @@ int main(){
     );
 
     if (ha ==  INVALID_HANDLE_VALUE){
-        printf("Failed to create directory handle. Error code: %lu", GetLastError());
+        printf("Failed to create directory handle. Error code: %lu.\n", GetLastError());
     }
     else{
-        printf("Successfully created directory handle.");
         DWORD dwNotifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
         file_notify_information = (buffer*)malloc(BUFFER_SIZE);
         OVERLAPPED overlapped = {0};
@@ -94,6 +96,7 @@ int main(){
             );
             if (!result) {
                 printf("[ERROR] ReadDirectoryChangesW failed! Error: %lu\n", GetLastError());
+                fflush(stdout);
                 break;
             }
             else{
